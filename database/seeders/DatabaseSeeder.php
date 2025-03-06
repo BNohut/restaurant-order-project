@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class, // Seed roles and permissions first
             StatusSeeder::class, // Seed statuses before users so they are available during user creation
             UserSeeder::class, // Seed users with roles
+            CompanySeeder::class, // Seed restaurant companies
         ]);
     }
 }

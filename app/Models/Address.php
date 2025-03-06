@@ -17,6 +17,7 @@ class Address extends Model
      */
     protected $fillable = [
         'user_uuid',
+        'company_uuid',
         'address_line1',
         'address_line2',
         'city',
@@ -45,5 +46,29 @@ class Address extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_uuid', 'uuid');
+    }
+
+    /**
+     * Get the company that owns the address.
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'company_uuid', 'uuid');
+    }
+
+    /**
+     * Check if the address belongs to a company.
+     */
+    public function isCompanyAddress(): bool
+    {
+        return $this->company_uuid !== null;
+    }
+
+    /**
+     * Check if the address belongs to a user.
+     */
+    public function isUserAddress(): bool
+    {
+        return $this->user_uuid !== null;
     }
 }

@@ -87,6 +87,14 @@ class Company extends Model
     }
 
     /**
+     * Get all addresses associated with the company.
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, 'company_uuid', 'uuid');
+    }
+
+    /**
      * Get the products for the company.
      */
     public function products(): HasMany
