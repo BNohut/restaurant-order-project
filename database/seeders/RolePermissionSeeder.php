@@ -55,9 +55,6 @@ class RolePermissionSeeder extends Seeder
 
       'manager' => [
         // System permissions for manager
-        'project.systems.index',
-        'project.systems.users.index',
-        'project.systems.statuses.index',
         'project.systems.attachment',
 
         // Platform permissions for manager
