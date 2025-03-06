@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             StatusSeeder::class, // Seed statuses before users so they are available during user creation
             UserSeeder::class, // Seed users with roles
             CompanySeeder::class, // Seed restaurant companies
+            ProductSeeder::class, // Seed products for companies
         ]);
     }
 }
