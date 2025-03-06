@@ -78,4 +78,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Address::class, 'user_uuid', 'uuid');
     }
+
+    /**
+     * Get the companies owned by the user.
+     */
+    public function companies(): HasMany
+    {
+        return $this->hasMany(Company::class, 'owner_uuid', 'uuid');
+    }
 }
