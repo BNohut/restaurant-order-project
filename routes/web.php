@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\HomeController;
+use App\Http\Controllers\Web\RestaurantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,9 +16,7 @@ use App\Http\Controllers\Web\AuthController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -37,7 +37,24 @@ Route::post('/register/courier', [AuthController::class, 'registerCourier']);
 
 // Protected Routes
 Route::middleware('auth')->group(function () {
+    // Dashboard
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        $featuredRestaurants = App\Models\Company::with('address')
+            ->where('is_active', true)
+            ->where('is_featured', true)
+            ->take(4)
+            ->get();
+
+        $featuredProducts = App\Models\Product::with('company')
+            ->where('is_featured', true)
+            ->where('is_available', true)
+            ->take(4)
+            ->get();
+
+        return view('dashboard', compact('featuredRestaurants', 'featuredProducts'));
     })->name('dashboard');
+
+    // Restaurant Routes
+    Route::get('/restaurants', [RestaurantController::class, 'index'])->name('restaurants.index');
+    Route::get('/restaurants/{uuid}', [RestaurantController::class, 'show'])->name('restaurants.show');
 });
