@@ -111,7 +111,6 @@
 <body>
     <div class="container">
         <div class="welcome-box">
-            <img src="{{ asset('images/restomate.png') }}" alt="Restomate Logo" class="logo">
             <img src="{{ asset('images/restomate_title.png') }}" alt="Restomate" class="title-image">
             
             <p class="lead mb-5">Welcome to our Restomate - Restaurant Order System. Order delicious food from the comfort of your home or manage your restaurant operations.</p>

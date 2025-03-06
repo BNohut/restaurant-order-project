@@ -43,7 +43,7 @@ class Order extends Model
         'user_uuid',
         'company_uuid',
         'address_uuid',
-        'status',
+        'status_uuid',
         'total_amount',
         'delivery_fee',
         'tax_amount',
@@ -98,6 +98,14 @@ class Order extends Model
     public function courier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'courier_uuid', 'uuid');
+    }
+
+    /**
+     * Get the status of this order.
+     */
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(Status::class, 'status_uuid', 'uuid');
     }
 
     /**
