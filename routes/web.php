@@ -57,4 +57,13 @@ Route::middleware('auth')->group(function () {
     // Restaurant Routes
     Route::get('/restaurants', [RestaurantController::class, 'index'])->name('restaurants.index');
     Route::get('/restaurants/{uuid}', [RestaurantController::class, 'show'])->name('restaurants.show');
+
+    // Cart Routes
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add', [CartController::class, 'addItem'])->name('cart.add');
+    Route::post('/cart/update', [CartController::class, 'updateItem'])->name('cart.update');
+    Route::post('/cart/remove', [CartController::class, 'removeItem'])->name('cart.remove');
+    Route::post('/cart/clear', [CartController::class, 'clearCart'])->name('cart.clear');
+    Route::get('/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+
 });
