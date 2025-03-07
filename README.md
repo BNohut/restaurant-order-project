@@ -8,14 +8,24 @@
 
 The Restaurant Order Management System is a modern, robust application built with Laravel for managing restaurant orders, products, customers, and companies. The application follows SOLID principles and modular architecture to ensure scalability and maintainability.
 
+## My Development Discipline & Process Management
+
+- **Find Requirements**: First, I decided which packages I should use in the project. I used Spatie for role and permission management, and Sanctum for API Authorization.
+- **DB Design**: Once I had decided on the packages, I designed the database schema based on the project's requirements. I defined the tables, their relationships, and used migrations to implement them.
+-**Task Breakdown**: After I designed the database, I broke it into smaller tasks that I can work on to finish the project. And I created a TODO list in NotionAI to track progress and priorities.
+-**Branching** For each task, I created a separate branch from the main branch, and named them after the task number. I did git commit after each task I finished and did the merge back to master.
+-**Debugging**: As I completed tasks, I would run the project to ensure everything was working as it should. I created intermediate tasks every time I felt a need to squash a bug/make something better so that the project could flow efficiently.
+-**Optimizing & Refactoring**: Followed up with an optimization of the code to refactor everything that was possible to make sure the code was clean and maintainable.
+
 ## Features
 
-- **User Management**: Role-based access control system with permissions
-- **Company Management**: Create and manage companies with associated addresses
+- **User Management**: Role-based access control system with permissions using Spatie's Laravel-Permission package
+- **Restaurant Management**: Create and manage companies with associated addresses
 - **Product Catalog**: Maintain a catalog of food products with pricing
 - **Order Processing**: Create, track, and manage food orders
 - **Order Status Tracking**: Monitor order fulfillment through status updates
 - **Address Management**: Store and manage delivery addresses
+- **Permission-Based Access Control**: Granular control over user permissions and roles with Spatie Laravel-Permission
 
 ## System Requirements
 
@@ -28,7 +38,7 @@ The Restaurant Order Management System is a modern, robust application built wit
 
 1. Clone the repository
    ```
-   git clone https://your-repository-url.git
+   git clone https://github.com/BNohut/restaurant-order-project.git
    cd restaurant-order-project
    ```
 
@@ -37,7 +47,7 @@ The Restaurant Order Management System is a modern, robust application built wit
    composer install
    ```
 
-3. Install frontend dependencies
+3. Install frontend dependencies(optional)
    ```
    npm install && npm run build
    ```
@@ -74,29 +84,28 @@ This project follows a modular architecture adhering to SOLID principles:
 
 - **Models**: Represent database entities (User, Product, Order, OrderItem, Company, Address, Status)
 - **Controllers**: Handle HTTP requests and responses
-- **Services**: Contain business logic
-- **Repositories**: Handle data access logic
 - **Traits**: Provide reusable functionality across models
+
+## Packages & Technologies
+
+The project leverages several powerful packages to enhance functionality:
+
+- **[Spatie Laravel-Permission](https://spatie.be/docs/laravel-permission)**: Advanced role and permission management with a powerful and flexible ACL system
+- **[Laravel Sanctum](https://laravel.com/docs/12.x/sanctum)**: API token authentication
+- **[Laravel Eloquent](https://laravel.com/docs/12.x/eloquent)**: ORM for elegant database interactions
+- **[Laravel Validation](https://laravel.com/docs/12.x/validation)**: For robust data validation
 
 ## API Documentation
 
 The system provides both web and API interfaces. API endpoints follow REST conventions and include:
 
-- User authentication and management
-- Product management
-- Order creation and processing
-- Status updates
-- Company and address management
+- User authentication **READY!**
+- Order creation **READY!**
+- Product management (Soon!)
+- Status updates (Soon!)
+- Company and address management (Soon!)
 
 For detailed API documentation, run the application and visit `/api/documentation`.
-
-## Testing
-
-Run the automated tests with:
-
-```
-php artisan test
-```
 
 ## Contributing
 
@@ -108,4 +117,4 @@ php artisan test
 
 ## License
 
-The Restaurant Order Management System is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The Restaurant Order Management System is open-sourced software licensed under the ME.
