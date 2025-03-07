@@ -8,9 +8,14 @@ use App\Models\Company;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Status;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class OrderController extends Controller
 {
@@ -75,7 +80,7 @@ class OrderController extends Controller
         }
 
         // Get pending status
-        $pendingStatus = Status::where('name', 'pending')->first();
+        $pendingStatus = Status::where('name', 'Pending')->first();
         if (!$pendingStatus) {
             // Create pending status if it doesn't exist
             $pendingStatus = Status::create([
@@ -148,15 +153,25 @@ class OrderController extends Controller
      */
     public function show($uuid)
     {
-        $order = Order::with(['company', 'status', 'address', 'items.product'])
+        $order = Order::with(['status', 'company', 'address', 'items.product', 'courier'])
             ->where('uuid', $uuid)
-            ->where('user_uuid', Auth::id())
+            ->where(function ($query) {
+                $user = Auth::user();
+                if ($user->hasRole('client')) {
+                    $query->where('user_uuid', $user->uuid);
+                } elseif ($user->hasRole('manager')) {
+                    $query->whereHas('company', function ($q) use ($user) {
+                        $q->where('owner_uuid', $user->uuid);
+                    });
+                } elseif ($user->hasRole('courier')) {
+                    $query->where('courier_uuid', $user->uuid)
+                        ->orWhereNull('courier_uuid');
+                }
+                // Admin can see all orders
+            })
             ->firstOrFail();
 
-        // Parse items snapshot
-        $itemsSnapshot = json_decode($order->items_snapshot, true) ?? [];
-
-        return view('orders.show', compact('order', 'itemsSnapshot'));
+        return view('orders.show', compact('order'));
     }
 
     /**
@@ -169,7 +184,7 @@ class OrderController extends Controller
             ->firstOrFail();
 
         // Get canceled status
-        $canceledStatus = Status::where('name', 'canceled')->first();
+        $canceledStatus = Status::where('name', 'Canceled')->first();
         if (!$canceledStatus) {
             // Create canceled status if it doesn't exist
             $canceledStatus = Status::create([
@@ -179,7 +194,7 @@ class OrderController extends Controller
         }
 
         // Only allow cancellation of pending orders
-        $pendingStatus = Status::where('name', 'pending')->first();
+        $pendingStatus = Status::where('name', 'Pending')->first();
 
         if ($order->status_uuid !== $pendingStatus->uuid) {
             return redirect()->route('orders.show', $order->uuid)
@@ -193,5 +208,277 @@ class OrderController extends Controller
 
         return redirect()->route('orders.show', $order->uuid)
             ->with('success', 'Your order has been canceled');
+    }
+
+    /**
+     * Display a listing of the orders for the manager's restaurants.
+     */
+    public function manageOrders()
+    {
+        $user = Auth::user();
+        if (!$user->hasRole('manager')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $orders = Order::with(['status', 'company', 'customer', 'courier'])
+            ->whereHas('company', function ($query) use ($user) {
+                $query->where('owner_uuid', $user->uuid);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        $couriers = User::role('courier')->get();
+
+        return view('orders.manage', compact('orders', 'couriers'));
+    }
+
+    /**
+     * Approve the specified order.
+     */
+    public function approveOrder($uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('manager')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->whereHas('company', function ($query) use ($user) {
+                $query->where('owner_uuid', $user->uuid);
+            })
+            ->firstOrFail();
+
+        // Check if order can be approved (only pending orders)
+        $pendingStatus = Status::where('name', 'Pending')->first();
+        if ($order->status_uuid !== $pendingStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only pending orders can be approved.');
+        }
+
+        // Update order status to confirmed
+        $confirmedStatus = Status::where('name', 'Approved')->first();
+        $order->update(['status_uuid' => $confirmedStatus->uuid]);
+
+        return redirect()->route('orders.manage')
+            ->with('success', 'Order approved successfully.');
+    }
+
+    /**
+     * Reject the specified order.
+     */
+    public function rejectOrder($uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('manager')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->whereHas('company', function ($query) use ($user) {
+                $query->where('owner_uuid', $user->uuid);
+            })
+            ->firstOrFail();
+
+        // Check if order can be rejected (only pending orders)
+        $pendingStatus = Status::where('name', 'pending')->first();
+        if ($order->status_uuid !== $pendingStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only pending orders can be rejected.');
+        }
+
+        // Update order status to rejected
+        $rejectedStatus = Status::where('name', 'Rejected')->first();
+        $order->update(['status_uuid' => $rejectedStatus->uuid]);
+
+        return redirect()->route('orders.manage')
+            ->with('success', 'Order rejected successfully.');
+    }
+
+    /**
+     * Assign a courier to the specified order.
+     */
+    public function assignCourier(Request $request, $uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('manager')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'courier_uuid' => 'required|exists:users,uuid',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->whereHas('company', function ($query) use ($user) {
+                $query->where('owner_uuid', $user->uuid);
+            })
+            ->firstOrFail();
+
+        // Check if order is in a status that allows courier assignment
+        $confirmedStatus = Status::where('name', 'Approved')->first();
+        if ($order->status_uuid !== $confirmedStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only confirmed orders can be assigned to couriers.');
+        }
+
+        // Verify the courier exists and has the courier role
+        $courier = User::where('uuid', $request->courier_uuid)
+            ->role('courier')
+            ->first();
+
+        if (!$courier) {
+            return redirect()->back()
+                ->with('error', 'Selected courier not found.');
+        }
+
+        // Update order with courier and change status to preparing
+        $preparingStatus = Status::where('name', 'Preparing')->first();
+        $order->update([
+            'courier_uuid' => $courier->uuid,
+            'status_uuid' => $preparingStatus->uuid
+        ]);
+
+        return redirect()->route('orders.manage')
+            ->with('success', 'Courier assigned successfully.');
+    }
+
+    /**
+     * Display a listing of the orders assigned to the courier.
+     */
+    public function courierOrders()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('courier')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $orders = Order::with(['status', 'company', 'address', 'customer'])
+            ->where('courier_uuid', $user->uuid)
+            ->whereHas('status', function ($query) {
+                $query->whereIn('name', ['Preparing', 'Ready for pickup', 'On the way', 'Delivered']);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('orders.courier', compact('orders'));
+    }
+
+    /**
+     * Update the order status to "on the way".
+     */
+    public function markOnTheWay($uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('courier')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->where('courier_uuid', $user->uuid)
+            ->firstOrFail();
+
+        // Check if order can be marked as on the way (only ready orders)
+        $readyStatus = Status::where('name', 'Ready for pickup')->first();
+        if ($order->status_uuid !== $readyStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only ready orders can be marked as on the way.');
+        }
+
+        // Update order status to on the way
+        $onTheWayStatus = Status::where('name', 'On the way')->first();
+        $order->update(['status_uuid' => $onTheWayStatus->uuid]);
+
+        return redirect()->route('orders.courier')
+            ->with('success', 'Order marked as on the way.');
+    }
+
+    /**
+     * Update the order status to "delivered".
+     */
+    public function markDelivered($uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('courier')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->where('courier_uuid', $user->uuid)
+            ->firstOrFail();
+
+        // Check if order can be marked as delivered (only on the way orders)
+        $onTheWayStatus = Status::where('name', 'On the way')->first();
+        if ($order->status_uuid !== $onTheWayStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only orders that are on the way can be marked as delivered.');
+        }
+
+        // Update order status to delivered
+        $deliveredStatus = Status::where('name', 'Delivered')->first();
+        $order->update([
+            'status_uuid' => $deliveredStatus->uuid,
+            'payment_status' => 'paid' // If cash on delivery, mark as paid when delivered
+        ]);
+
+        return redirect()->route('orders.courier')
+            ->with('success', 'Order marked as delivered.');
+    }
+
+    /**
+     * Mark an order as ready for pickup by courier.
+     */
+    public function markReady($uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('manager')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $order = Order::where('uuid', $uuid)
+            ->whereHas('company', function ($query) use ($user) {
+                $query->where('owner_uuid', $user->uuid);
+            })
+            ->firstOrFail();
+
+        // Check if order can be marked as ready (only preparing orders)
+        $preparingStatus = Status::where('name', 'Preparing')->first();
+        if ($order->status_uuid !== $preparingStatus->uuid) {
+            return redirect()->back()
+                ->with('error', 'Only preparing orders can be marked as ready.');
+        }
+
+        // Check if courier is assigned
+        if (!$order->courier_uuid) {
+            return redirect()->back()
+                ->with('error', 'A courier must be assigned before marking the order as ready.');
+        }
+
+        // Update order status to ready
+        $readyStatus = Status::where('name', 'Ready for pickup')->first();
+        $order->update(['status_uuid' => $readyStatus->uuid]);
+
+        return redirect()->route('orders.manage')
+            ->with('success', 'Order marked as ready for pickup.');
     }
 }
