@@ -77,7 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{uuid}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 
     // Manager Order Management Routes
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'role:manager'])->group(function () {
         Route::get('/order-management', [OrderController::class, 'manageOrders'])->name('orders.manage');
         Route::post('/order-management/{uuid}/approve', [OrderController::class, 'approveOrder'])->name('orders.approve');
         Route::post('/order-management/{uuid}/reject', [OrderController::class, 'rejectOrder'])->name('orders.reject');
@@ -86,7 +86,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Courier Order Management Routes
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'role:courier'])->group(function () {
         Route::get('/deliveries', [OrderController::class, 'courierOrders'])->name('orders.courier');
         Route::post('/orders/{uuid}/on-the-way', [OrderController::class, 'markOnTheWay'])->name('orders.on-the-way');
         Route::post('/orders/{uuid}/delivered', [OrderController::class, 'markDelivered'])->name('orders.delivered');
