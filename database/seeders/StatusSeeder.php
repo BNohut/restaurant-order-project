@@ -57,6 +57,12 @@ class StatusSeeder extends Seeder
                 'color' => '#dc3545', // Red
                 'sort_order' => 70,
             ],
+            [
+                'name' => 'Rejected',
+                'description' => 'Order has been rejected by the restaurant',
+                'color' => '#dc3545', // Red
+                'sort_order' => 80,
+            ],
         ];
 
         // Create or update each status
