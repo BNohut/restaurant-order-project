@@ -725,41 +725,23 @@
                     <i class="bi bi-list-check"></i>
                     <span>Order Management</span>
                 </li>
-                <li class="menu-item has-submenu">
-                    <a href="#" class="menu-link">
+                <li class="menu-item">
+                    <a href="{{ route('orders.manage') }}" class="menu-link {{ request()->routeIs('orders.manage') ? 'active' : '' }}">
                         <i class="bi bi-cart-check menu-icon"></i>
-                        <span class="menu-text">Order Management</span>
-                        <i class="bi bi-chevron-right submenu-indicator"></i>
+                        <span class="menu-text">Manage Orders</span>
                     </a>
-                    <ul class="submenu">
-                        <li class="menu-item">
-                            <a href="#" class="menu-link">
-                                <span class="menu-text">All Orders</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="#" class="menu-link">
-                                <span class="menu-text">Pending Orders</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="#" class="menu-link">
-                                <span class="menu-text">Completed Orders</span>
-                            </a>
-                        </li>
-                    </ul>
                 </li>
                 @endif
                 
                 @if(Auth::user()->hasRole('courier'))
-                <!-- Courier Section -->
+                <!-- Deliveries Section -->
                 <li class="menu-header">
-                    <i class="bi bi-bicycle"></i>
+                    <i class="bi bi-truck"></i>
                     <span>Deliveries</span>
                 </li>
                 <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="bi bi-bicycle menu-icon"></i>
+                    <a href="{{ route('orders.courier') }}" class="menu-link {{ request()->routeIs('orders.courier') ? 'active' : '' }}">
+                        <i class="bi bi-truck menu-icon"></i>
                         <span class="menu-text">My Deliveries</span>
                     </a>
                 </li>
