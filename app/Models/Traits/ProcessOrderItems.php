@@ -14,7 +14,25 @@ trait ProcessOrderItems
   public static function bootProcessOrderItems()
   {
     static::created(function ($order) {
-      $order->createOrderItems();
+      if (empty($order->items_snapshot)) {
+        return;
+      }
+
+      $items = json_decode($order->items_snapshot, true);
+      if (!is_array($items)) {
+        return;
+      }
+
+      foreach ($items as $item) {
+        OrderItem::create([
+          'order_uuid' => $order->uuid,
+          'product_uuid' => $item['product_uuid'] ?? $item['uuid'] ?? null, // Support both formats
+          'quantity' => $item['quantity'],
+          'unit_price' => $item['unit_price'] ?? $item['price'] ?? 0, // Support both formats
+          'subtotal' => $item['subtotal'],
+          'special_instructions' => $item['special_instructions'] ?? $item['notes'] ?? null, // Support both formats
+        ]);
+      }
     });
 
     static::updated(function ($order) {
@@ -26,31 +44,7 @@ trait ProcessOrderItems
   }
 
   /**
-   * Create order items from the snapshot.
-   *
-   * @return void
-   */
-  protected function createOrderItems()
-  {
-    if (empty($this->items_snapshot)) {
-      return;
-    }
-
-    foreach ($this->items_snapshot as $item) {
-      OrderItem::create([
-        'uuid' => (string) Str::uuid(),
-        'order_uuid' => $this->uuid,
-        'product_uuid' => $item['product_uuid'],
-        'quantity' => $item['quantity'],
-        'unit_price' => $item['unit_price'],
-        'subtotal' => $item['subtotal'],
-        'special_instructions' => $item['special_instructions'] ?? null,
-      ]);
-    }
-  }
-
-  /**
-   * Sync order items with the current snapshot.
+   * Sync order items with the current items snapshot.
    *
    * @return void
    */
@@ -60,61 +54,61 @@ trait ProcessOrderItems
     $this->items()->delete();
 
     // Create new order items from the updated snapshot
-    $this->createOrderItems();
+    $items = json_decode($this->items_snapshot, true);
+    if (is_array($items)) {
+      foreach ($items as $item) {
+        $this->items()->create([
+          'product_uuid' => $item['product_uuid'] ?? $item['uuid'] ?? null,
+          'quantity' => $item['quantity'],
+          'unit_price' => $item['unit_price'] ?? $item['price'] ?? 0,
+          'subtotal' => $item['subtotal'],
+          'special_instructions' => $item['special_instructions'] ?? $item['notes'] ?? null,
+        ]);
+      }
+    }
   }
 
   /**
-   * Calculate order total from items
+   * Calculate the order total based on items.
    *
    * @return float
    */
   public function calculateOrderTotal()
   {
-    if (empty($this->items_snapshot)) {
-      return 0;
+    $subtotal = 0;
+    $items = json_decode($this->items_snapshot, true) ?? [];
+
+    foreach ($items as $item) {
+      $subtotal += $item['subtotal'] ?? 0;
     }
 
-    return collect($this->items_snapshot)->sum('subtotal');
+    // Add delivery fee and tax
+    return $subtotal + $this->delivery_fee + $this->tax_amount;
   }
 
   /**
-   * Prepare an items snapshot from an array of product data
+   * Prepare items snapshot from array of items.
    *
-   * @param array $items Array of items with product_uuid, quantity and optional special_instructions
-   * @return array Processed items with calculated prices
+   * @param array $items
+   * @return string
    */
   public function prepareItemsSnapshot(array $items)
   {
-    $snapshot = [];
+    // Ensure all required fields are present
+    $formattedItems = [];
 
     foreach ($items as $item) {
-      // Validate required fields
-      if (empty($item['product_uuid']) || empty($item['quantity'])) {
-        continue;
-      }
-
-      // Find the product to get current pricing
-      $product = app('App\Models\Product')->find($item['product_uuid']);
-      if (!$product) {
-        continue;
-      }
-
-      // Calculate subtotal
-      $quantity = (int) $item['quantity'];
-      $unitPrice = (float) $product->price;
-      $subtotal = $quantity * $unitPrice;
-
-      // Create snapshot item with complete data
-      $snapshot[] = [
-        'product_uuid' => $item['product_uuid'],
-        'product_name' => $product->name,
-        'quantity' => $quantity,
-        'unit_price' => $unitPrice,
-        'subtotal' => $subtotal,
-        'special_instructions' => $item['special_instructions'] ?? null,
+      $formattedItems[] = [
+        'product_uuid' => $item['product_uuid'] ?? $item['uuid'] ?? null,
+        'quantity' => $item['quantity'] ?? 1,
+        'unit_price' => $item['unit_price'] ?? $item['price'] ?? 0,
+        'subtotal' => $item['subtotal'] ?? ($item['unit_price'] ?? $item['price'] ?? 0) * ($item['quantity'] ?? 1),
+        'special_instructions' => $item['special_instructions'] ?? $item['notes'] ?? null,
+        'name' => $item['name'] ?? 'Unknown Item',
+        'category' => $item['category'] ?? null,
       ];
     }
 
-    return $snapshot;
+    return json_encode($formattedItems);
   }
 }

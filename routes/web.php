@@ -2,8 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\CartController;
 use App\Http\Controllers\Web\HomeController;
+use App\Http\Controllers\Web\OrderController;
 use App\Http\Controllers\Web\RestaurantController;
+use App\Models\Company;
+use App\Models\Product;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,13 +43,13 @@ Route::post('/register/courier', [AuthController::class, 'registerCourier']);
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', function () {
-        $featuredRestaurants = App\Models\Company::with('address')
+        $featuredRestaurants = Company::with('address')
             ->where('is_active', true)
             ->where('is_featured', true)
             ->take(4)
             ->get();
 
-        $featuredProducts = App\Models\Product::with('company')
+        $featuredProducts = Product::with('company')
             ->where('is_featured', true)
             ->where('is_available', true)
             ->take(4)
@@ -66,4 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/cart/clear', [CartController::class, 'clearCart'])->name('cart.clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 
+    // Order Routes
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/{uuid}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{uuid}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 });
