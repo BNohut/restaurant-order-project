@@ -105,7 +105,6 @@ The system provides both web and API interfaces. API endpoints follow REST conve
 - Status updates (Soon!)
 - Company and address management (Soon!)
 
-For detailed API documentation, run the application and visit `/api/documentation`.
 
 ## Contributing
 
