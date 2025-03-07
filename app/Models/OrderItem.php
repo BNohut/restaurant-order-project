@@ -72,4 +72,30 @@ class OrderItem extends Model
     {
         return $this->belongsTo(Product::class, 'product_uuid', 'uuid');
     }
+
+    /**
+     * Calculate the unit price and subtotal based on the product.
+     *
+     * @return $this
+     */
+    public function calculatePrices()
+    {
+        // Load the product if not already loaded
+        if (!$this->relationLoaded('product')) {
+            $this->load('product');
+        }
+
+        // Get the product
+        $product = $this->product;
+
+        if ($product) {
+            // Set the unit price from the product
+            $this->unit_price = $product->price;
+
+            // Calculate the subtotal
+            $this->subtotal = $this->unit_price * $this->quantity;
+        }
+
+        return $this;
+    }
 }
